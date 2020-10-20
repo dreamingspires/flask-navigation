@@ -77,6 +77,19 @@ class Item(object):
         return dict(self._args)
 
     @property
+    def request_args(self):
+        request_args = self.args.copy()
+        values = {} if not 'values' in self.args.keys() else self.args['values']
+
+        # Remove keywords
+        keywords = ['_external', '_scheme', '_anchor', '_method', 'values']
+        for k in keywords:
+            request_args.pop(k, None)
+
+        # Incorporate values
+        return {**request_args, **values}
+
+    @property
     def url(self):
         """The final url of this navigation item.
 
@@ -116,7 +129,7 @@ class Item(object):
         if not self.is_internal:
             return False  # always false for external url
         has_same_endpoint = (request.endpoint == self.endpoint)
-        has_same_args = (request.view_args == self.args)
+        has_same_args = (request.view_args == self.request_args)
         return has_same_endpoint and has_same_args  # matches the endpoint
 
     @property
@@ -206,5 +219,8 @@ class ItemReference(collections.namedtuple('ItemReference', 'endpoint args')):
 
     def __new__(cls, endpoint, args=()):
         if isinstance(args, dict):
-            args = freeze_dict(args)
+            # Unpack values from the dict
+            values = {} if 'values' not in args.keys() else args['values']
+            args.pop('values', None)
+            args = freeze_dict({**args, **values})
         return super(cls, ItemReference).__new__(cls, endpoint, args)
